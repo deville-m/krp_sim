@@ -2,10 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
-mod parser;
-use parser::parse;
-
-mod krp;
+use common::parser::parse;
 
 fn help(name: &str) {
     eprintln!("usage: {} file delay", name);

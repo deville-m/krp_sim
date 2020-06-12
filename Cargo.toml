@@ -1,5 +1,5 @@
 [package]
-name = "krp_sim"
+name = "krpsim"
 version = "0.1.0"
 authors = ["mdeville"]
 edition = "2018"
@@ -8,3 +8,15 @@ edition = "2018"
 
 [dependencies]
 nom = "6.0.0-alpha1"
+
+[[bin]]
+name="krpsim"
+path="src/bin/krpsim.rs"
+
+[[bin]]
+name="krpsim_verif"
+path="src/bin/krpsim_verif.rs"
+
+[lib]
+name="common"
+path="src/common/lib.rs"

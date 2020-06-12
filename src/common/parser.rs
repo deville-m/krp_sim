@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use nom::{
     bytes::complete::{tag, take_while1},
     character::complete::digit1,
@@ -6,14 +7,13 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
-
 use crate::krp::{Krp, Process};
 
-fn alpha(input: &str) -> IResult<&str, &str> {
+pub fn alpha(input: &str) -> IResult<&str, &str> {
     take_while1(|c: char| c.is_ascii_alphanumeric() || c == '_')(input)
 }
 
-fn number(input: &str) -> IResult<&str, i32> {
+pub fn number(input: &str) -> IResult<&str, i32> {
     map_res(digit1, |s: &str| s.parse::<i32>())(input)
 }
 
@@ -62,17 +62,17 @@ fn comment(input: &str) -> IResult<&str, &str> {
 }
 
 pub fn parse(input: &str) -> Result<Krp, &'static str> {
-    let mut s = Vec::new();
-    let mut p = Vec::new();
+    let mut s = HashMap::new();
+    let mut p = HashMap::new();
     let mut o: Option<Vec<&str>> = None;
 
     for line in input.lines() {
         if comment(line).is_ok() {
             continue;
         } else if let Ok((_, t)) = stock(line) {
-            s.push(t);
+            s.insert(t.0, t.1);
         } else if let Ok((_, v)) = process(line) {
-            p.push(v);
+            p.insert(v.name, v);
         } else if let Ok((_, v)) = optimize(line) {
             o = Some(v);
         } else {
