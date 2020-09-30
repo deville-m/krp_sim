@@ -2,22 +2,22 @@ use std::collections::HashMap;
 use std::cmp::Ordering;
 
 #[derive(Debug)]
-pub struct Process<'a> {
-    pub name: &'a str,
-    pub requirements: Vec<(&'a str, i32)>,
-    pub results: Vec<(&'a str, i32)>,
+pub struct Process {
+    pub name: String,
+    pub requirements: Vec<(String, i32)>,
+    pub results: Vec<(String, i32)>,
     pub nb_cycle: i32,
 }
 
 #[derive(Debug)]
-pub struct Krp<'a> {
-    pub stock: HashMap<&'a str, i32>,
-    pub processes: HashMap<&'a str, Process<'a>>,
-    pub optimize: Vec<&'a str>,
+pub struct Krp {
+    pub stock: HashMap<String, i32>,
+    pub processes: HashMap<String, Process>,
+    pub optimize: Vec<String>,
 }
 
-impl<'a> Krp<'a> {
-    pub fn consume(&mut self, process: &'a Process) -> Option<()> {
+impl Krp {
+    pub fn consume(&mut self, process: &Process) -> Option<()> {
         for (name, qty) in process.requirements.iter() {
             let x = self.stock.get_mut(name)?;
             match (*x).cmp(qty) {
@@ -29,12 +29,12 @@ impl<'a> Krp<'a> {
         Some(())
     }
 
-    pub fn produce(&mut self, process: &'a Process) -> Option<()> {
-        for (name, qty) in process.requirements.iter() {
+    pub fn produce(&mut self, process: &Process) -> Option<()> {
+        for (name, qty) in process.results.iter() {
             let stock = self.stock.get_mut(name);
             match stock {
                 Some(x) => { *x += *qty },
-                None => { self.stock.insert(name, *qty); }
+                None => { self.stock.insert(name.clone(), *qty); }
             }
         }
         Some(())

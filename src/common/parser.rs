@@ -7,27 +7,30 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
+
 use crate::krp::{Krp, Process};
 
-pub fn alpha(input: &str) -> IResult<&str, &str> {
-    take_while1(|c: char| c.is_ascii_alphanumeric() || c == '_')(input)
+pub fn alpha(input: &str) -> IResult<&str, String> {
+    let (o, p) = take_while1(|c: char| c.is_ascii_alphanumeric() || c == '_')(input)?;
+
+    Ok((o, p.to_string()))
 }
 
 pub fn number(input: &str) -> IResult<&str, i32> {
     map_res(digit1, |s: &str| s.parse::<i32>())(input)
 }
 
-fn stock(input: &str) -> IResult<&str, (&str, i32)> {
+fn stock(input: &str) -> IResult<&str, (String, i32)> {
     let (o, (p, _, q)) = tuple((alpha, tag(":"), number))(input)?;
 
     Ok((o, (p, q)))
 }
 
-fn stock_list(input: &str) -> IResult<&str, Vec<(&str, i32)>> {
+fn stock_list(input: &str) -> IResult<&str, Vec<(String, i32)>> {
     delimited(tag("("), separated_list1(tag(";"), stock), tag(")"))(input)
 }
 
-fn optimize(input: &str) -> IResult<&str, Vec<&str>> {
+fn optimize(input: &str) -> IResult<&str, Vec<String>> {
     delimited(
         tag("optimize:("),
         separated_list1(tag(";"), alpha),
@@ -64,7 +67,7 @@ fn comment(input: &str) -> IResult<&str, &str> {
 pub fn parse(input: &str) -> Result<Krp, &'static str> {
     let mut s = HashMap::new();
     let mut p = HashMap::new();
-    let mut o: Option<Vec<&str>> = None;
+    let mut o: Option<Vec<String>> = None;
 
     for line in input.lines() {
         if comment(line).is_ok() {
@@ -72,7 +75,7 @@ pub fn parse(input: &str) -> Result<Krp, &'static str> {
         } else if let Ok((_, t)) = stock(line) {
             s.insert(t.0, t.1);
         } else if let Ok((_, v)) = process(line) {
-            p.insert(v.name, v);
+            p.insert(v.name.clone(), v);
         } else if let Ok((_, v)) = optimize(line) {
             o = Some(v);
         } else {

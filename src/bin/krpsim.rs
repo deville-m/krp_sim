@@ -4,6 +4,8 @@ use std::io::prelude::*;
 
 use common::parser::parse;
 
+const MAX_FILE_SIZE: u64 = 10000;
+
 fn help(name: &str) {
     eprintln!("usage: {} file delay", name);
 }
@@ -15,25 +17,26 @@ fn main() {
         return;
     }
     let file = File::open(&args[1]);
-    let mut file = match file {
+    let file = match file {
         Ok(file) => file,
         Err(error) => {
-            println!("Problem opening the file: {}", error);
+            eprintln!("Error opening the file: {}", error);
             return;
         }
     };
 
-    let delay = match args[2].parse::<f32>() {
+    let _delay = match args[2].parse::<f32>() {
         Ok(nb) => nb,
-        Err(_) => {
-            println!("Problem reading delay");
+        Err(error) => {
+            eprintln!("Error reading delay: {}", error);
             return;
         }
     };
 
+    let mut handle = file.take(MAX_FILE_SIZE);
     let mut buffer = String::new();
-    if file.read_to_string(&mut buffer).is_err() {
-        eprintln!("Error reading file");
+    if let Err(error) = handle.read_to_string(&mut buffer) {
+        eprintln!("Error reading file: {}", error);
         return;
     }
 

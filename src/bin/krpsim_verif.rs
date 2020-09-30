@@ -2,19 +2,22 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::collections::VecDeque;
+use std::cmp::Ordering;
 
 use common::krp::{Krp, Process};
 use common::parser::{alpha, number, parse};
 use nom::{bytes::complete::tag, sequence::tuple, IResult};
 
-fn parse_process(input: &str) -> IResult<&str, (i32, &str)> {
+const MAX_FILE_SIZE: u64 = 10000;
+
+fn parse_process(input: &str) -> IResult<&str, (i32, String)> {
     let (o, (p, _, q)) = tuple((number, tag(":"), alpha))(input)?;
 
     Ok((o, (p, q)))
 }
 
-fn parse_trace(trace: &str) -> IResult<&str, Vec<(i32, &str)>> {
-    let mut res: Vec<(i32, &str)> = Vec::new();
+fn parse_trace(trace: &str) -> IResult<&str, Vec<(i32, String)>> {
+    let mut res: Vec<(i32, String)> = Vec::new();
 
     for line in trace.lines() {
         let (_, value) = parse_process(line)?;
@@ -25,19 +28,42 @@ fn parse_trace(trace: &str) -> IResult<&str, Vec<(i32, &str)>> {
     Ok((trace, res))
 }
 
-fn verifier<'a>(mut krp: Krp<'a>, mut walk: Vec<(i32, &str)>) -> Option<()> {
-    let mut active: VecDeque<(i32, &'a Process)> = VecDeque::new();
+fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Option<()> {
+    let mut active: VecDeque<(i32, &Process)> = VecDeque::new();
     while let Some((start, pname)) = walk.pop() {
-        let process = krp.processes.get(pname)?;
+        let process = krp.processes.get(&pname)?;
         'inner: while let Some((end, aproc)) = active.front() {
             if start < *end {
                 break 'inner;
             }
-            //krp.produce(*aproc)?;
+            for (name, qty) in aproc.results.iter() {
+                let stock = krp.stock.get_mut(name);
+                match stock {
+                    Some(x) => { *x += *qty },
+                    None => { krp.stock.insert(name.clone(), *qty); }
+                }
+            }
             active.pop_front();
         }
-        krp.consume(process)?;
+        for (name, qty) in process.requirements.iter() {
+            let x = krp.stock.get_mut(name)?;
+            match (*x).cmp(qty) {
+                Ordering::Less => return None,
+                Ordering::Equal => { krp.stock.remove(name); },
+                Ordering::Greater => *x -= *qty
+            }
+        }
         active.push_back((start + process.nb_cycle, process));
+    }
+    while let Some((_, aproc)) = active.front() {
+        for (name, qty) in aproc.results.iter() {
+            let stock = krp.stock.get_mut(name);
+            match stock {
+                Some(x) => { *x += *qty },
+                None => { krp.stock.insert(name.clone(), *qty); }
+            }
+        }
+        active.pop_front();
     }
     Some(())
 }
@@ -48,53 +74,53 @@ fn main() {
         eprintln!("usage: {} file trace", args[0]);
         return;
     }
-    let mut file = match File::open(&args[1]) {
+    let file = match File::open(&args[1]) {
         Ok(file) => file,
         Err(error) => {
-            println!("Problem opening config file: {}", error);
+            eprintln!("Error opening config file: {}", error);
             return;
         }
     };
 
+    let mut handle = file.take(MAX_FILE_SIZE);
     let mut buffer = String::new();
-    if file.read_to_string(&mut buffer).is_err() {
-        eprintln!("Error reading config file");
+    if let Err(error) = handle.read_to_string(&mut buffer) {
+        eprintln!("Error reading config file: {}", error);
         return;
     }
 
-    let krp = match parse(&buffer[..]) {
-        Ok(v) => v,
-        Err(err) => {
-            eprintln!("{}", err);
-            return;
-        }
-    };
+    let krp = parse(&buffer[..]);
+    if let Err(error) = krp {
+        eprint!("{}", error);
+        return;
+    }
 
-    let mut file = match File::open(&args[2]) {
+    let file = match File::open(&args[2]) {
         Ok(file) => file,
         Err(error) => {
-            println!("Problem opening trace file: {}", error);
+            eprintln!("Error opening trace file: {}", error);
             return;
         }
     };
 
+    let mut handle = file.take(MAX_FILE_SIZE);
     let mut trace = String::new();
-    if file.read_to_string(&mut trace).is_err() {
-        eprintln!("Error reading config file");
+    if let Err(error) = handle.read_to_string(&mut trace) {
+        eprintln!("Error reading config file: {}", error);
         return;
     }
 
     let walk = match parse_trace(&trace[..]) {
         Ok((_, v)) => v,
-        Err(err) => {
-            eprintln!("{}", err);
+        Err(error) => {
+            eprintln!("{}", error);
             return;
         }
     };
 
-    if verifier(krp, walk) == None {
-        println!("OK");
-    } else {
+    if verifier(krp.unwrap(), walk) == None {
         println!("KO");
+    } else {
+        println!("OK");
     }
 }
