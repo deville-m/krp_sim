@@ -45,5 +45,5 @@ fn main() {
         eprintln!("{}", err);
         return;
     }
-    println!("{:#?}", krp);
+    krp.unwrap().print_state();
 }

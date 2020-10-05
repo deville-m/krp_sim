@@ -1,8 +1,8 @@
+use std::cmp::Ordering;
+use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::collections::VecDeque;
-use std::cmp::Ordering;
 
 use common::krp::{Krp, Process};
 use common::parser::{alpha, number, parse};
@@ -16,10 +16,17 @@ fn parse_process(input: &str) -> IResult<&str, (i32, String)> {
     Ok((o, (p, q)))
 }
 
+fn comment(input: &str) -> IResult<&str, &str> {
+    tag("#")(input)
+}
+
 fn parse_trace(trace: &str) -> IResult<&str, Vec<(i32, String)>> {
     let mut res: Vec<(i32, String)> = Vec::new();
 
     for line in trace.lines() {
+        if comment(line).is_ok() {
+            continue;
+        }
         let (_, value) = parse_process(line)?;
         res.push(value);
     }
@@ -45,8 +52,10 @@ fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Result<(Krp, i32), (i
             for (name, qty) in aproc.results.iter() {
                 let stock = krp.stock.get_mut(name);
                 match stock {
-                    Some(x) => { *x += *qty },
-                    None => { krp.stock.insert(name.clone(), *qty); }
+                    Some(x) => *x += *qty,
+                    None => {
+                        krp.stock.insert(name.clone(), *qty);
+                    }
                 }
             }
             active.pop_front();
@@ -59,8 +68,10 @@ fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Result<(Krp, i32), (i
             let x = x.unwrap();
             match (*x).cmp(qty) {
                 Ordering::Less => return Err((start, pname, krp)),
-                Ordering::Equal => { krp.stock.remove(name); },
-                Ordering::Greater => *x -= *qty
+                Ordering::Equal => {
+                    krp.stock.remove(name);
+                }
+                Ordering::Greater => *x -= *qty,
             }
         }
         active.push_back((start + process.nb_cycle, process));
@@ -70,8 +81,10 @@ fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Result<(Krp, i32), (i
         for (name, qty) in aproc.results.iter() {
             let stock = krp.stock.get_mut(name);
             match stock {
-                Some(x) => { *x += *qty },
-                None => { krp.stock.insert(name.clone(), *qty); }
+                Some(x) => *x += *qty,
+                None => {
+                    krp.stock.insert(name.clone(), *qty);
+                }
             }
         }
         active.pop_front();
@@ -130,7 +143,13 @@ fn main() {
     };
 
     match verifier(krp.unwrap(), walk) {
-        Ok((krp, end)) => println!("OK at cycle {}\nStocks:\n{:#?}", end, krp.stock),
-        Err((cycle, pname, krp)) => println!("KO at cycle {}: {}\nStocks:\n{:#?}", cycle, pname, krp.stock)
+        Ok((krp, end)) => {
+            krp.print_state();
+            println!("OK at cycle {}", end)
+        }
+        Err((cycle, pname, krp)) => {
+            krp.print_state();
+            println!("KO at cycle {}: {}", cycle, pname)
+        }
     }
 }

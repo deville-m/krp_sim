@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use nom::{
     bytes::complete::{tag, take_while1},
     character::complete::digit1,
@@ -7,6 +6,7 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
+use std::collections::HashMap;
 
 use crate::krp::{Krp, Process};
 
