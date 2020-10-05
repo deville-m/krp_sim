@@ -28,14 +28,20 @@ fn parse_trace(trace: &str) -> IResult<&str, Vec<(i32, String)>> {
     Ok((trace, res))
 }
 
-fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Option<()> {
+fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Result<(Krp, i32), (i32, String, Krp)> {
     let mut active: VecDeque<(i32, &Process)> = VecDeque::new();
+    let mut last_cycle: i32 = 0;
     while let Some((start, pname)) = walk.pop() {
-        let process = krp.processes.get(&pname)?;
+        let process = krp.processes.get(&pname);
+        if process.is_none() {
+            return Err((start, pname, krp));
+        }
+        let process = process.unwrap();
         'inner: while let Some((end, aproc)) = active.front() {
             if start < *end {
                 break 'inner;
             }
+            last_cycle = *end;
             for (name, qty) in aproc.results.iter() {
                 let stock = krp.stock.get_mut(name);
                 match stock {
@@ -46,16 +52,21 @@ fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Option<()> {
             active.pop_front();
         }
         for (name, qty) in process.requirements.iter() {
-            let x = krp.stock.get_mut(name)?;
+            let x = krp.stock.get_mut(name);
+            if x.is_none() {
+                return Err((start, pname, krp));
+            }
+            let x = x.unwrap();
             match (*x).cmp(qty) {
-                Ordering::Less => return None,
+                Ordering::Less => return Err((start, pname, krp)),
                 Ordering::Equal => { krp.stock.remove(name); },
                 Ordering::Greater => *x -= *qty
             }
         }
         active.push_back((start + process.nb_cycle, process));
     }
-    while let Some((_, aproc)) = active.front() {
+    while let Some((end, aproc)) = active.front() {
+        last_cycle = *end;
         for (name, qty) in aproc.results.iter() {
             let stock = krp.stock.get_mut(name);
             match stock {
@@ -65,7 +76,7 @@ fn verifier(mut krp: Krp, mut walk: Vec<(i32, String)>) -> Option<()> {
         }
         active.pop_front();
     }
-    Some(())
+    Ok((krp, last_cycle))
 }
 
 fn main() {
@@ -91,7 +102,7 @@ fn main() {
 
     let krp = parse(&buffer[..]);
     if let Err(error) = krp {
-        eprint!("{}", error);
+        eprintln!("{}", error);
         return;
     }
 
@@ -118,9 +129,8 @@ fn main() {
         }
     };
 
-    if verifier(krp.unwrap(), walk) == None {
-        println!("KO");
-    } else {
-        println!("OK");
+    match verifier(krp.unwrap(), walk) {
+        Ok((krp, end)) => println!("OK at cycle {}\nStocks:\n{:#?}", end, krp.stock),
+        Err((cycle, pname, krp)) => println!("KO at cycle {}: {}\nStocks:\n{:#?}", cycle, pname, krp.stock)
     }
 }

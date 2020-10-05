@@ -79,7 +79,7 @@ pub fn parse(input: &str) -> Result<Krp, &'static str> {
         } else if let Ok((_, v)) = optimize(line) {
             o = Some(v);
         } else {
-            return Err("Invalid line");
+            return Err("Invalid config file");
         }
     }
     if s.is_empty() || p.is_empty() || o == None {

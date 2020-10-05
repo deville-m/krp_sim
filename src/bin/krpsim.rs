@@ -42,7 +42,7 @@ fn main() {
 
     let krp = parse(&buffer[..]);
     if let Err(err) = krp {
-        eprint!("{}", err);
+        eprintln!("{}", err);
         return;
     }
     println!("{:#?}", krp);

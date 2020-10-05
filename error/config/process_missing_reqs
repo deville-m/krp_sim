@@ -1,0 +1,8 @@
+planche:7
+
+do_montant::(montant:1):15
+do_fond::(fond:1):20
+do_etagere::(etagere:1):10
+do_armoire_ikea::(armoire:1):30
+
+optimize:(time;armoire)
