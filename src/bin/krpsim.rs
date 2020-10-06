@@ -45,5 +45,6 @@ fn main() {
         eprintln!("{}", err);
         return;
     }
-    krp.unwrap().print_state();
+    let krp = krp.unwrap();
+    krp.print_state();
 }

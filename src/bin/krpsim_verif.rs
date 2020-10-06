@@ -8,7 +8,7 @@ use common::krp::{Krp, Process};
 use common::parser::{alpha, number, parse};
 use nom::{bytes::complete::tag, sequence::tuple, IResult};
 
-const MAX_FILE_SIZE: u64 = 10000;
+const MAX_FILE_SIZE: u64 = 100000000;
 
 fn parse_process(input: &str) -> IResult<&str, (i32, String)> {
     let (o, (p, _, q)) = tuple((number, tag(":"), alpha))(input)?;
